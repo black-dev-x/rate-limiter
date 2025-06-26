@@ -1,14 +1,15 @@
 package r
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 )
 
 type RateLimiter struct {
-	defaultRate RequestRate
-	apiKeys     map[string]RequestRate
+	defaultRate  RequestRate
+	apiKeys      map[string]RequestRate
+	usage        map[string][]int64
+	blockedUntil map[string]int64
 }
 
 func NewRateLimiter() *RateLimiter {
@@ -29,13 +30,35 @@ func (rl *RateLimiter) AddApiKey(apiKey string, rate RequestRate) {
 func (rl *RateLimiter) RegisterMux(mux *http.ServeMux) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		apiKey := r.Header.Get("API_KEY")
-		if rate, exists := rl.apiKeys[apiKey]; exists {
-			// Use the special rate for this API key
-			fmt.Printf("Using special rate for API key %s: %+v\n", apiKey, rate)
+		now := time.Now().Unix()
+		var rate RequestRate
+		var origin string
+		if rateFound, exists := rl.apiKeys[apiKey]; exists {
+			rate = rateFound
+			origin = apiKey
 		} else {
-			// Use the default rate
-			fmt.Printf("Using default rate: %+v\n", rl.defaultRate)
+			origin = r.RemoteAddr
+			rate = rl.defaultRate
 		}
+		println("Rate for origin:", origin)
+		if blockedUntil, exists := rl.blockedUntil[origin]; exists && now < blockedUntil {
+			http.Error(w, "you have reached the maximum number of requests or actions allowed within a certain time frame", http.StatusTooManyRequests)
+			return
+		}
+		if len(rl.usage[origin]) < rate.Requests {
+			rl.usage[origin] = append(rl.usage[origin], now)
+		} else {
+			oldestRequestTime := rl.usage[origin][0]
+			timeGap := now - oldestRequestTime
+			duration, _ := time.ParseDuration(rate.Per)
+			if timeGap < int64(duration) {
+				block, _ := time.ParseDuration(rate.BlockDuration)
+				rl.blockedUntil[origin] = now + int64(block)
+				http.Error(w, "you have reached the maximum number of requests or actions allowed within a certain time frame", http.StatusTooManyRequests)
+				return
+			}
+		}
+		rl.usage[origin] = append(rl.usage[origin], now)
 
 		mux.ServeHTTP(w, r)
 	})
