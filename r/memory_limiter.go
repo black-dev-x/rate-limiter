@@ -11,7 +11,6 @@ type MemoryRateLimiter struct {
 
 func NewMemoryLimiter() RateLimiterInterface {
 	return &MemoryRateLimiter{
-		defaultRate:  RequestRate{Requests: 20, Per: "1s", BlockDuration: "5m"},
 		apiKeys:      make(map[string]RequestRate),
 		usage:        make(map[string][]int64),
 		blockedUntil: make(map[string]int64),

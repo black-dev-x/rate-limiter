@@ -23,6 +23,8 @@ func NewRateLimiterConnector(connectorType int) *RateLimiterConnector {
 func newRateLimiter(connectorType int) RateLimiterInterface {
 	if connectorType == MEMORY {
 		return NewMemoryLimiter()
+	} else if connectorType == REDIS {
+		return NewRedisLimiter()
 	}
 	return nil
 }

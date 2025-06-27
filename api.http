@@ -1,5 +1,4 @@
 GET http://localhost:8080
-API_KEY: 123abc
 
 GET http://localhost:8080
 API_KEY: 123
