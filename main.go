@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	rateLimiter := r.NewRateLimiter()
+	rateLimiter := r.NewRateLimiterConnector(r.MEMORY)
 
 	defaultRate := r.RequestRate{Requests: 1, Per: "20s", BlockDuration: "20s"}
 	rateLimiter.SetDefaultRate(defaultRate)
