@@ -10,10 +10,10 @@ import (
 func main() {
 	rateLimiter := r.NewRateLimiter()
 
-	defaultRate := r.RequestRate{Requests: 2, Per: "1s", BlockDuration: "5m"}
+	defaultRate := r.RequestRate{Requests: 1, Per: "20s", BlockDuration: "20s"}
 	rateLimiter.SetDefaultRate(defaultRate)
 
-	specialRate := r.RequestRate{Requests: 10, Per: "1s", BlockDuration: "1m"}
+	specialRate := r.RequestRate{Requests: 1, Per: "10s", BlockDuration: "1m"}
 	rateLimiter.AddApiKey("123abc", specialRate)
 
 	mux := http.NewServeMux()
@@ -22,5 +22,6 @@ func main() {
 	})
 
 	wrappedMux := rateLimiter.RegisterMux(mux)
+
 	http.ListenAndServe(":8080", wrappedMux)
 }
