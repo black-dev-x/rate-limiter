@@ -20,7 +20,7 @@ func main() {
 	specialPer := env.String("SPECIAL_PER", "10s")
 	specialBlockDuration := env.String("SPECIAL_BLOCK_DURATION", "1m")
 
-	rateLimiter := r.NewRateLimiterConnector(r.MEMORY)
+	rateLimiter := r.NewRateLimiterConnector(r.REDIS)
 
 	defaultRate := r.RequestRate{Requests: requests, Per: per, BlockDuration: blockDuration}
 	rateLimiter.SetDefaultRate(defaultRate)

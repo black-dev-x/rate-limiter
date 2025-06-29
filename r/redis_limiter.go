@@ -2,6 +2,7 @@ package r
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/black-dev-x/rate-limiter/env"
@@ -34,37 +35,48 @@ const defaultRate = "default_rate"
 
 func (rl *RedisRateLimiter) SetDefaultRate(rate RequestRate) {
 	rl.client.Set(rl.ctx, defaultRate, rate, 0)
+	rl.client.HSet(rl.ctx, defaultRate, map[string]interface{}{
+		"requests":       rate.Requests,
+		"per":            rate.Per,
+		"block_duration": rate.BlockDuration,
+	})
 }
 
 func (rl *RedisRateLimiter) GetDefaultRate() RequestRate {
 	var rate RequestRate
-	rl.client.Get(rl.ctx, defaultRate).Scan(&rate)
+	rl.client.HGetAll(rl.ctx, defaultRate).Scan(&rate)
+	println("Default rate:", rate.Requests, "requests per", rate.Per, "with block duration", rate.BlockDuration)
 	return rate
 }
 
 func (rl *RedisRateLimiter) AddApiKey(apiKey string, rate RequestRate) {
-	rl.client.HSet(rl.ctx, "api_keys", apiKey, rate)
+	rl.client.HSet(rl.ctx, "api_keys:"+apiKey, map[string]interface{}{
+		"requests":       rate.Requests,
+		"per":            rate.Per,
+		"block_duration": rate.BlockDuration,
+	})
 }
 
 func (rl *RedisRateLimiter) GetApiKeyRate(apiKey string) (RequestRate, bool) {
 	var rate RequestRate
-	rl.client.HGet(rl.ctx, "api_keys", apiKey).Scan(&rate)
+	rl.client.HGetAll(rl.ctx, "api_keys:"+apiKey).Scan(&rate)
 	if rate.Requests == 0 {
+		fmt.Println("Rate for API key not found:", apiKey)
 		return RequestRate{}, false
 	}
 	return rate, true
 }
 
 func (rl *RedisRateLimiter) AddUsage(origin string, rate RequestRate) bool {
+	println("Adding usage for origin:", origin, "with rate:", rate.Requests)
 	now := time.Now().Unix()
 	key := "usage:" + origin
 	rl.client.RPush(rl.ctx, key, now)
-	rl.client.LTrim(rl.ctx, key, 0, 1)
 	usages, err := rl.client.LRange(rl.ctx, key, 0, -1).Result()
-	if err != nil || len(usages) < rate.Requests {
+	if err != nil || len(usages) <= rate.Requests {
 		return false
 	}
-	oldest, _ := rl.client.LIndex(rl.ctx, key, 0).Int64()
+	oldest, _ := rl.client.LPop(rl.ctx, key).Int64()
 	duration, _ := time.ParseDuration(rate.Per)
 	if now-oldest < int64(duration.Seconds()) {
 		block, _ := time.ParseDuration(rate.BlockDuration)

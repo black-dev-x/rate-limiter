@@ -22,6 +22,7 @@ func (rl *MemoryRateLimiter) GetDefaultRate() RequestRate {
 }
 
 func (rl *MemoryRateLimiter) SetDefaultRate(rate RequestRate) {
+	println("Setting default rate:", rate.Requests, "requests per", rate.Per, "with block duration", rate.BlockDuration)
 	rl.defaultRate = rate
 }
 

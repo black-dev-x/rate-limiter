@@ -12,7 +12,7 @@ type RateLimiterInterface interface {
 }
 
 type RequestRate struct {
-	Requests      int
-	Per           string
-	BlockDuration string
+	Requests      int    `redis:"requests"`
+	Per           string `redis:"per"`
+	BlockDuration string `redis:"block_duration"`
 }
